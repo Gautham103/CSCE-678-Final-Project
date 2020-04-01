@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+
+package Tweet_Analyzer;
+
+
+service Tweet_Analyzer {
+  rpc Tweet_Sentiment_Request (Tweet_Analyzer_Request) returns (Tweet_Analyzer_Reply) {}
+}
+
+message Tweet_Analyzer_Request {
+  string hashtag = 1;
+  int32 num_tweets = 2;
+}
+
+message Tweet_Analyzer_Reply {
+  float pos_tweets = 1;
+  float neg_tweets = 2;
+  float neu_tweets = 3;
+}
