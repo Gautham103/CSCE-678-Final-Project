@@ -2,9 +2,7 @@
 
 ## Setup
 
-pip3 install grpc_tools
-pip3 install protobuf
-pip3 install grpcio-tools
+pip3 install grpc_tools, protobuf, grpcio-tools, grpcio
 
 Compile proto file:
 ```
