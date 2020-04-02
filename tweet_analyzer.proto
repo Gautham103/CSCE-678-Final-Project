@@ -6,6 +6,9 @@ package Tweet_Analyzer;
 
 service Tweet_Analyzer {
   rpc Tweet_Sentiment_Request (Tweet_Analyzer_Request) returns (Tweet_Analyzer_Reply) {}
+  rpc Get_Positive_Tweets (Dummy) returns (stream Tweets) {}
+  rpc Get_Negative_Tweets (Dummy) returns (stream Tweets) {}
+  rpc Get_Neutral_Tweets (Dummy) returns (stream Tweets) {}
 }
 
 message Tweet_Analyzer_Request {
@@ -17,4 +20,12 @@ message Tweet_Analyzer_Reply {
   float pos_tweets = 1;
   float neg_tweets = 2;
   float neu_tweets = 3;
+}
+
+message Tweets {
+    repeated string tweets = 1;
+}
+
+message Dummy {
+    int32 temp = 1;
 }

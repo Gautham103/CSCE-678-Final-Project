@@ -95,30 +95,42 @@ class TwitterClient(object):
             print("Error : " + str(e))
 
 
-
 class Tweet_Analyzer(tweet_analyzer_pb2_grpc.Tweet_AnalyzerServicer):
+
 
     def Tweet_Sentiment_Request(self, request, context):
 
-        # creating object of TwitterClient Class
         api = TwitterClient()
-        # calling function to get tweets
         tweets = api.get_tweets(query = request.hashtag, count = request.num_tweets)
 
-        # picking positive tweets from tweets
-        ptweets = [tweet for tweet in tweets if tweet['sentiment'] == 'positive']
-        ntweets = [tweet for tweet in tweets if tweet['sentiment'] == 'negative']
-        # percentage of positive tweets
-        postive_tweet_percent = 100*len(ptweets)/len(tweets)
-        negative_tweet_percent = 100*len(ntweets)/len(tweets)
+        self.ptweets = [tweet for tweet in tweets if tweet['sentiment'] == 'positive']
+        self.ntweets = [tweet for tweet in tweets if tweet['sentiment'] == 'negative']
+        self.neutraltweets = [tweet for tweet in tweets if tweet['sentiment'] == 'neutral']
+
+        postive_tweet_percent = 100*len(self.ptweets)/len(tweets)
+        negative_tweet_percent = 100*len(self.ntweets)/len(tweets)
         neutral_tweet_percent = 100 - postive_tweet_percent - negative_tweet_percent
+
         return tweet_analyzer_pb2.Tweet_Analyzer_Reply(pos_tweets=postive_tweet_percent, neg_tweets=negative_tweet_percent, neu_tweets=neutral_tweet_percent)
+
+    def Get_Positive_Tweets(self, request, context):
+        for t in self.ptweets[:5]:
+            yield tweet_analyzer_pb2.Tweets(tweets = t['text'])
+
+
+    def Get_Negative_Tweets(self, request, context):
+        for t in self.ntweets[:5]:
+            yield tweet_analyzer_pb2.Tweets(tweets = t['text'])
+
+    def Get_Neutral_Tweets(self, request, context):
+        for t in self.neutraltweets[:5]:
+            yield tweet_analyzer_pb2.Tweets(tweets = t['text'])
 
 
 def serve():
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
     tweet_analyzer_pb2_grpc.add_Tweet_AnalyzerServicer_to_server(Tweet_Analyzer(), server)
-    server.add_insecure_port('[::]:50051')
+    server.add_insecure_port('[::]:50052')
     server.start()
     server.wait_for_termination()
 
