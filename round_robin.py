@@ -1,5 +1,8 @@
+from concurrent import futures
 from absl import flags
+from absl import app
 import grpc
+import sys
 
 import tweet_analyzer_pb2
 import tweet_analyzer_pb2_grpc
@@ -11,20 +14,24 @@ flags.DEFINE_integer("cap_server", 2, "Capacity of each server in the model")
 
 
 FLAGS = flags.FLAGS
+#FLAGS(sys.argv)
+
 
 
 class proxy:
 	def __init__(self,cap,stb):
+		print('\n(Proxy).... ')
 		self.capacity = cap
 		self.active_req = 0
 		self.proxy_stub = stb
-		self.connected_clients = []
+		#self.connected_clients = []
 
 
 
 class server_services(object):
 
 	def __init__(self):
+		print('\n(Server Services).... ')
 		self.proxies = []
 		#self.wait_queue_req = []	
 		self.current_proxy = 0
@@ -35,28 +42,29 @@ class server_services(object):
 		tmp=50053
 
 		for i in range(FLAGS.num_servers):
-			stub_ = tweet_analyzer_pb2_grpc.Tweet_AnalyzerStub(grpc.insecure_channel('34.221.147.253:'+str(tmp)))
+			stub_ = tweet_analyzer_pb2_grpc.Tweet_AnalyzerStub(grpc.insecure_channel('54.184.106.216:'+str(tmp)))
 			#tmp+=1
 			self.proxies.append(proxy(FLAGS.cap_server, stub_))
 
 	def find_server(self):
+		print('\n(Find Server).... ')
 		while True:
-			server_id = self.current_server%FLAGS.num_servers
-			server = self.servers[server_id]
+			server_id = self.current_proxy%FLAGS.num_servers
+			server = self.proxies[server_id]
 
 			if server.active_req < server.capacity:
 				success = 1
 				start_server = 1000000
 				server.active_req += 1
-				server.connected_clients.append(client_ip)
+				#server.connected_clients.append(client_ip)
 				break
 			else:
 				success = False
 				while True:
-					if servers[current_server%num_servers].active_req < servers[current_server%num_servers].capacity:
+					if self.proxies[self.current_proxy%FLAGS.num_servers].active_req < self.proxies[self.current_proxy%FLAGS.num_servers].capacity:
 						success = True
 						break
-					current_server+=1	
+					self.current_proxy+=1	
 				'''
 				start_server = current_server+1
 				while current_server != start_server:
@@ -75,7 +83,7 @@ class server_services(object):
 					break
 				'''	
 					
-		return success, current_server	
+		return success, self.current_proxy	
 		
 
 
@@ -84,9 +92,11 @@ class server_services(object):
 class Load_Balancer(load_balancer_pb2_grpc.Load_BalancerServicer):
 
 	def __init__(self):
+		print('\n(Load Balancer class).... ')
 		self.server_service = server_services()
 
 	def Tweet_Sentiment_Request(self, request, context):
+		print('\n(Tweet Sentiment Request).... ')
 		if_success, proxy_id = self.server_service.find_server()
 		if if_success:
 			chosen_proxy = self.server_service.proxies[proxy_id]
@@ -104,13 +114,17 @@ class Load_Balancer(load_balancer_pb2_grpc.Load_BalancerServicer):
 
 
 
-def main():
-	Load_Balancer()
+def serve():
+	print('\n(serve).... ')
 	server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
-	load_balancer_pb2_grpc.add_Load_BalancerServicerto_server(Load_Balancer(), server)
+	load_balancer_pb2_grpc.add_Load_BalancerServicer_to_server(Load_Balancer(), server)
 	server.add_insecure_port('[::]:50051')
 	server.start()
-	server.wait_for_termination()	
+	server.wait_for_termination()
+
+def main(argv):
+	print('Load Balancer Begins.... (main)')
+	serve()	
 
 	
 #def invoke_waiting():
@@ -119,8 +133,10 @@ def main():
 		#return req, cli_ip
 
 
-if __name__ == "__main":
-	main()
+if __name__ == '__main__':
+	app.run(main)
+	#logging.basicConfig()
+	
 
 
 
