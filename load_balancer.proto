@@ -1,0 +1,32 @@
+syntax = "proto3";
+
+
+package Load_Balancer;
+
+
+service Load_Balancer {
+  rpc Tweet_Sentiment_Request (Tweet_Analyzer_Request) returns (Tweet_Analyzer_Reply) {}
+  rpc Get_Positive_Tweets (Dummy) returns (stream Tweets) {}
+  rpc Get_Negative_Tweets (Dummy) returns (stream Tweets) {}
+  rpc Get_Neutral_Tweets (Dummy) returns (stream Tweets) {}
+  
+}
+
+message Tweet_Analyzer_Request {
+  string hashtag = 1;
+  int32 num_tweets = 2;
+}
+
+message Tweet_Analyzer_Reply {
+  float pos_tweets = 1;
+  float neg_tweets = 2;
+  float neu_tweets = 3;
+}
+
+message Tweets {
+    repeated string tweets = 1;
+}
+
+message Dummy {
+    int32 temp = 1;
+}
