@@ -102,6 +102,7 @@ class Load_Balancer(load_balancer_pb2_grpc.Load_BalancerServicer):
 			chosen_proxy = self.server_service.proxies[proxy_id]
 			chosen_stub = chosen_proxy.proxy_stub
 			response_fromproxy = chosen_stub.Tweet_Sentiment_Request(tweet_analyzer_pb2.Tweet_Analyzer_Request(hashtag = request.hashtag, num_tweets = request.num_tweets))
+			chosen_proxy.active_req-=1
 			return response_fromproxy
 
 		#elif not if_success:
