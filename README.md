@@ -17,12 +17,12 @@ access_token_secret = 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'
 ```
 
 ## Steps to Run
-Run Server:
+Run Client with python3 twitter_analyzer_server.py ip:port. For example:
 ```
-python3 twitter_analyzer_server.py
+python3 twitter_analyzer_server.py localhost:50052
 ```
 
-Run Client:
+Run Client with python3 twitter_analyzer_client.py ip:port tweet_topic tweet_count. For example:
 ```
-python3 twitter_analyzer_client.py
+python3 twitter_analyzer_client.py localhost:50052 covid19 100
 ```

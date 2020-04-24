@@ -2,7 +2,7 @@ from __future__ import print_function
 import logging
 
 import grpc
-
+import sys
 import tweet_analyzer_pb2
 import tweet_analyzer_pb2_grpc
 
@@ -12,10 +12,10 @@ def convert(s):
         new += x
     return new
 
-def run():
-    channel = grpc.insecure_channel('localhost:50052')
+def run(server_ip_port, topic, tweet_count):
+    channel = grpc.insecure_channel(server_ip_port)
     stub = tweet_analyzer_pb2_grpc.Tweet_AnalyzerStub(channel)
-    response = stub.Tweet_Sentiment_Request(tweet_analyzer_pb2.Tweet_Analyzer_Request(hashtag = 'covid19', num_tweets = 100))
+    response = stub.Tweet_Sentiment_Request(tweet_analyzer_pb2.Tweet_Analyzer_Request(hashtag = topic, num_tweets = tweet_count))
     print("Postivie tweets received: " + str(response.pos_tweets))
     print("Negative tweets received: " + str(response.neg_tweets))
     print("Neutral tweets received: " + str(response.neu_tweets))
@@ -39,5 +39,9 @@ def run():
 
 
 if __name__ == '__main__':
+    server_ip_port = sys.argv[1:][0]
+    topic = sys.argv[1:][1]
+    tweet_count = int (sys.argv[1:][2])
+
     logging.basicConfig()
-    run()
+    run(server_ip_port, topic, tweet_count)

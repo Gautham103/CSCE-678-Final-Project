@@ -1,11 +1,9 @@
 from concurrent import futures
 import logging
-
 import grpc
-
 import tweet_analyzer_pb2
 import tweet_analyzer_pb2_grpc
-
+import sys
 import re
 import tweepy
 from tweepy import OAuthHandler
@@ -127,14 +125,15 @@ class Tweet_Analyzer(tweet_analyzer_pb2_grpc.Tweet_AnalyzerServicer):
             yield tweet_analyzer_pb2.Tweets(tweets = t['text'])
 
 
-def serve():
+def serve(server_ip_port):
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
     tweet_analyzer_pb2_grpc.add_Tweet_AnalyzerServicer_to_server(Tweet_Analyzer(), server)
-    server.add_insecure_port('[::]:50052')
+    server.add_insecure_port(server_ip_port)
     server.start()
     server.wait_for_termination()
 
 
 if __name__ == '__main__':
     logging.basicConfig()
-    serve()
+    server_ip_port = sys.argv[1:][0]
+    serve(server_ip_port)
