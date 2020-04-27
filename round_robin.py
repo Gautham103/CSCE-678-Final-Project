@@ -21,7 +21,7 @@ FLAGS = flags.FLAGS
 
 class proxy:
 	def __init__(self,cap,stb):
-		print('\n(Proxy).... ')
+		#print('\n(Proxy).... ')
 		self.capacity = cap
 		self.active_req = 0
 		self.proxy_stub = stb
@@ -31,7 +31,7 @@ class proxy:
 class server_services(object):
 
 	def __init__(self):
-		print('\n(Server Services).... ')
+		#print('\n(Server Services).... ')
 		self.proxies = []
 		#self.wait_queue_req = []	
 		self.current_proxy = 0
@@ -41,8 +41,10 @@ class server_services(object):
 		self.polling_interval = (FLAGS.num_servers * FLAGS.cap_server)//2
 		self.current_load = 0
 
+		self.current_proxy_dict = {} #key:ip, value:stub
 
-		self.port=50052
+
+		self.port=50053
 
 		updating = self.update_proxies()
 		if not updating:
@@ -51,7 +53,7 @@ class server_services(object):
 
 
 	def find_server(self):
-		print('\n(Find Server).... ')
+		#print('\n(Find Server).... ')
 		while True:
 			server_id = self.current_proxy%FLAGS.num_servers
 			server = self.proxies[server_id]
@@ -91,28 +93,41 @@ class server_services(object):
 
 
 	def update_proxies(self):
-		print('\n(Updating Proxy List).... ')
+		#print('\n(Updating Proxy List).... ')
 		new_proxy_file = open('tmp.txt', 'rb')
 		proxy_list = new_proxy_file.readlines()
 		if len(proxy_list)>1:
 			return 0
-		print(proxy_list[0].decode('utf-8'))	
+		#print(proxy_list[0].decode('utf-8'))	
 
 		proxy_list = proxy_list[0].decode('utf-8').split(',')
-		print('List of active servers are : ', proxy_list)
+		#print('List of active servers are : ', proxy_list)
 
-		self.proxies = []	
+		#self.proxies = []	
 		self.current_proxy = 0
-		tmp_list = ['3.23.64.99:50052', '18.220.137.173:50052']
-		for i in range(0,FLAGS.num_servers):
+		addresses = []
+		#tmp_list = ['3.23.64.99:50052', '18.220.137.173:50052']
+		#for i in range(0,FLAGS.num_servers):
+		for i in range(0,len(proxy_list)):
 			proxy_server_address = proxy_list[i]+':'+str(self.port)
-			print('The proxy server {} is at address {}'.format(i,proxy_server_address))
-			stub_ = tweet_analyzer_pb2_grpc.Tweet_AnalyzerStub(grpc.insecure_channel(tmp_list[i]))
-			self.proxies.append(proxy(FLAGS.cap_server, stub_))
+			addresses.append(proxy_server_address)
+			if proxy_server_address not in self.current_proxy_dict: #takes acre of scaling up
+				print('The new proxy server is at address {}'.format(proxy_server_address))
+				stub_ = tweet_analyzer_pb2_grpc.Tweet_AnalyzerStub(grpc.insecure_channel(proxy_server_address))
+				self.proxies.append(proxy(FLAGS.cap_server, stub_))
+				self.current_proxy_dict[proxy_server_address]=stub_
+
+		for key in self.current_proxy_dict.keys():
+			if key not in addresses: #takes care of scaling down
+				print('\n(The server at address {} is terminated for scaling down).... '.format(key))
+				del self.current_proxy_dict[key]
+				self.proxies.remove(key)
+				
 		return 1
 
 	def check_poll(self):
 		if self.current_load==self.polling_interval:
+			self.current_load=0
 			updating = self.server_service.update_proxies()
 			if not updating:
 				print('\nThe new proxy list is corrupted. Terminating the program....')
@@ -127,20 +142,20 @@ class server_services(object):
 class Load_Balancer(load_balancer_pb2_grpc.Load_BalancerServicer):
 
 	def __init__(self):
-		print('\n(Load Balancer class).... ')
+		#print('\n(Load Balancer class).... ')
 		self.server_service = server_services()
-		print('\n(connection tp proxy servers are created)...')
+		#print('\n(connection tp proxy servers are created)...')
 		
 
 	def Tweet_Sentiment_Request(self, request, context):
-		print('\n(Tweet Sentiment Request).... ')
+		#print('\n(Tweet Sentiment Request).... ')
 		updating = self.server_service.check_poll()
 
 		#if current_load == polling_interval:
 			#updating = self.server_service.update_proxies()
 
 		if not updating:
-			print('\nThe new proxy list is corrupted. Terminating the program....')
+			#print('\nThe new proxy list is corrupted. Terminating the program....')
 			return updating
 		else:
 			if_success, proxy_id = self.server_service.find_server()
@@ -166,19 +181,19 @@ class Load_Balancer(load_balancer_pb2_grpc.Load_BalancerServicer):
 
 
 def serve():
-	print('\n(serve).... ')
+	#print('\n(serve).... ')
 	server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
-	print('\n(going to call load balancer and create load balancer grpc server).... ')
+	#print('\n(going to call load balancer and create load balancer grpc server).... ')
 	load_balancer_pb2_grpc.add_Load_BalancerServicer_to_server(Load_Balancer(), server)
-	print('\n(adding insecure port for load balancer grpc server).... ')
-	server.add_insecure_port('0.0.0.0:50056')
+	#print('\n(adding insecure port for load balancer grpc server).... ')
+	server.add_insecure_port('0.0.0.0:50055')
 	#server.add_insecure_port(load_balancer_ip_port)
-	print('\n(starting load balancer grpc server).... ')
+	#print('\n(starting load balancer grpc server).... ')
 	server.start()
 	server.wait_for_termination()
 
 def main(argv):
-	print('Load Balancer Begins.... (main)')
+	#print('Load Balancer Begins.... (main)')
 	#load_balancer_ip_port = sys.argv[1:][0]
 	serve()	
 
