@@ -35,7 +35,8 @@ In round_robin.py :
 In tmp.txt:
 1) include IPs of the proxy servers, that are running, separated with comma.
 
-**Run the proxy servers (python3 twitter_analyzer_server.py localhost:<port>) **
+**Run the proxy servers (python3 twitter_analyzer_server.py localhost:<port>)**
+  
 **Run the load balancers (python round_robin.py)**
 
 In test_client.py:
