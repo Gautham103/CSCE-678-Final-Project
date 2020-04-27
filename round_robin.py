@@ -38,7 +38,8 @@ class server_services(object):
 		self.wait_queue_clients = {}
 		self.wait_queue_req = {}
 		#self.processing_client = {}
-		self.polling_interval = (FLAGS.num_servers * FLAGS.cap_server)//2
+		#self.polling_interval = (FLAGS.num_servers * FLAGS.cap_server)//2
+		self.polling_interval = 1
 		self.current_load = 0
 
 		self.current_proxy_dict = {} #key:ip, value:stub
@@ -55,7 +56,8 @@ class server_services(object):
 	def find_server(self):
 		#print('\n(Find Server).... ')
 		while True:
-			server_id = self.current_proxy%FLAGS.num_servers
+			server_id = self.current_proxy%len(self.proxies)
+			#print('\nCurrnet proxy is {}, number of servers are {} and chosen one is {}'.format(self.current_proxy, len(self.proxies), server_id))
 			server = self.proxies[server_id]
 
 			if server.active_req < server.capacity:
@@ -63,14 +65,18 @@ class server_services(object):
 				start_server = 1000000
 				server.active_req += 1
 				#server.connected_clients.append(client_ip)
+				#x = self.current_proxy
+				x = server_id
+				self.current_proxy+=1
 				break
 			else:
 				success = False
 				while True:
-					if self.proxies[self.current_proxy%FLAGS.num_servers].active_req < self.proxies[self.current_proxy%FLAGS.num_servers].capacity:
+					if self.proxies[self.current_proxy%len(self.proxies)].active_req < self.proxies[self.current_proxy%len(self.proxies)].capacity:
 						success = True
 						break
-					self.current_proxy+=1	
+					self.current_proxy+=1
+					x = self.current_proxy	
 				'''
 				start_server = current_server+1
 				while current_server != start_server:
@@ -89,44 +95,52 @@ class server_services(object):
 					break
 				'''	
 					
-		return success, self.current_proxy
+		return success, x
 
 
 	def update_proxies(self):
 		#print('\n(Updating Proxy List).... ')
-		new_proxy_file = open('tmp.txt', 'rb')
+		new_proxy_file = open('/home/ubuntu/grpc/examples/cpp/route_guide/cmake/build/servers.txt', 'rb')
 		proxy_list = new_proxy_file.readlines()
 		if len(proxy_list)>1:
 			return 0
 		#print(proxy_list[0].decode('utf-8'))	
 
-		proxy_list = proxy_list[0].decode('utf-8').split(',')
+		proxy_list = proxy_list[0].rstrip().decode('utf-8').split(',')
 		#print('List of active servers are : ', proxy_list)
 
 		#self.proxies = []	
-		self.current_proxy = 0
+		#self.current_proxy = 0
 		addresses = []
+		#print('Proxy list : {}'.format(proxy_list))
 		#tmp_list = ['3.23.64.99:50052', '18.220.137.173:50052']
 		#for i in range(0,FLAGS.num_servers):
 		for i in range(0,len(proxy_list)):
-			proxy_server_address = proxy_list[i]+':'+str(self.port)
-			addresses.append(proxy_server_address)
-			if proxy_server_address not in self.current_proxy_dict: #takes acre of scaling up
-				print('The new proxy server is at address {}'.format(proxy_server_address))
-				stub_ = tweet_analyzer_pb2_grpc.Tweet_AnalyzerStub(grpc.insecure_channel(proxy_server_address))
-				self.proxies.append(proxy(FLAGS.cap_server, stub_))
-				self.current_proxy_dict[proxy_server_address]=stub_
+			if proxy_list[i]!='':
+				proxy_server_address = proxy_list[i]+':'+str(self.port)
+				addresses.append(proxy_server_address)
+				if proxy_server_address not in self.current_proxy_dict: #takes acre of scaling up
+					print('The new proxy server is at address {}'.format(proxy_server_address))
+					stub_ = tweet_analyzer_pb2_grpc.Tweet_AnalyzerStub(grpc.insecure_channel(proxy_server_address))
+					self.proxies.append(proxy(FLAGS.cap_server, stub_))
+					self.current_proxy_dict[proxy_server_address]=stub_
+
+		print('\nCurrent Proxies (addresses) are {}'.format(self.current_proxy_dict.keys()))
+		print('\nThe list read from servers.txt is {}'.format(addresses))		
 
 		for key in self.current_proxy_dict.keys():
 			if key not in addresses: #takes care of scaling down
-				print('\n(The server at address {} is terminated for scaling down).... '.format(key))
+				print('\nThe server at address {} is terminated for scaling down'.format(key))
 				del self.current_proxy_dict[key]
+				#for i in range(len(self.proxies)):
 				self.proxies.remove(key)
+
+		FLAGS.num_servers = len(self.proxies)		
 				
 		return 1
 
 	def check_poll(self):
-		if self.current_load==self.polling_interval:
+		if self.current_load>=self.polling_interval:
 			self.current_load=0
 			updating = self.update_proxies()
 			if not updating:
@@ -159,7 +173,9 @@ class Load_Balancer(load_balancer_pb2_grpc.Load_BalancerServicer):
 			return updating
 		else:
 			if_success, proxy_id = self.server_service.find_server()
+			#print('\nServer id is {}, number of current servers (proxy list) are {}, flags is {}'.format(proxy_id, len(self.server_service.proxies), FLAGS.num_servers))
 			if if_success:
+				#print('\nNumber of servers in proxy list (from grpc function) is {}'.format(len(self.server_service.proxies)))
 				chosen_proxy = self.server_service.proxies[proxy_id]
 				print('\nChosen server is {}'.format(proxy_id))
 				chosen_stub = chosen_proxy.proxy_stub
@@ -182,7 +198,7 @@ class Load_Balancer(load_balancer_pb2_grpc.Load_BalancerServicer):
 
 def serve():
 	#print('\n(serve).... ')
-	server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
+	server = grpc.server(futures.ThreadPoolExecutor(max_workers=6))
 	#print('\n(going to call load balancer and create load balancer grpc server).... ')
 	load_balancer_pb2_grpc.add_Load_BalancerServicer_to_server(Load_Balancer(), server)
 	#print('\n(adding insecure port for load balancer grpc server).... ')
