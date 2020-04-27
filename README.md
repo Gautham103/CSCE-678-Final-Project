@@ -26,3 +26,8 @@ Run Client with python3 twitter_analyzer_client.py ip:port tweet_topic tweet_cou
 ```
 python3 twitter_analyzer_client.py localhost:50052 covid19 100
 ```
+
+## Modifying the IPs:
+In round_robin.py :
+1) modify the load balancer grpc server port to be the same as given in test client
+2) modify the self.port to be the same as the port that the proxy servers are running
