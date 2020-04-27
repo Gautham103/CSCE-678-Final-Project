@@ -128,7 +128,7 @@ class server_services(object):
 	def check_poll(self):
 		if self.current_load==self.polling_interval:
 			self.current_load=0
-			updating = self.server_service.update_proxies()
+			updating = self.update_proxies()
 			if not updating:
 				print('\nThe new proxy list is corrupted. Terminating the program....')
 				return updating
